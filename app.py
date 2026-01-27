@@ -7,7 +7,15 @@ app.config['FLASK_TITLE'] = ""
 
 # --- IN-MEMORY DATA STRUCTURES (Students will modify this area) ---
 # Phase 1: A simple Python List to store contacts
-contacts = [] 
+contacts = ["Alice", "Bob", "Charlie", "Diana"] 
+
+#Searches for a contact by name, ignoring case
+#Returns the contact if found, else None
+def find_contact_by_name(name):
+    for contact in contacts:
+        if contact['name'].lower() == name.lower():
+            return contact
+    return None
 
 # --- ROUTES ---
 
@@ -17,6 +25,8 @@ def index():
     Displays the main page.
     Eventually, students will pass their Linked List or Tree data here.
     """
+    # change the flask html title to my name
+    app.config['FLASK_TITLE'] = "Olivia Sanchez "
     return render_template('index.html', 
                          contacts=contacts, 
                          title=app.config['FLASK_TITLE'])
