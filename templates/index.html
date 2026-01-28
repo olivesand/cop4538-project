@@ -15,11 +15,19 @@
         <form action="/add" method="POST">
             <input type="text" name="name" placeholder="Name" required>
             <input type="email" name="email" placeholder="Email" required>
-            <button type="submit">Add to Data Structure</button>
+            <button type="submit">Add Contact</button>
+        </form>
+    </div>
+    <!-- copilot, please create a form with a text input named "query" and a "Search" button -->
+    <div style="background-color: #f9f9f9; padding: 15px;">
+        <h3>Search Contacts</h3>
+        <form action="/search" method="GET">
+            <input type="text" name="query" placeholder="Search by name" required>
+            <button type="submit">Search</button>
         </form>
     </div>
     <hr>
-    <h3>Current Contacts (In-Memory)</h3>
+    <h3>Current Contacts</h3>
     {% for contact in contacts %}
         <div class="card">
             <strong>{{ contact.name }}</strong> - {{ contact.email }}

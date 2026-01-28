@@ -7,7 +7,8 @@ app.config['FLASK_TITLE'] = ""
 
 # --- IN-MEMORY DATA STRUCTURES (Students will modify this area) ---
 # Phase 1: A simple Python List to store contacts
-contacts = ["Alice", "Bob", "Charlie", "Diana"] 
+contacts = [{'name': 'Alice', 'email': 'alice@email.com'},
+            {'name': 'Bob', 'email': 'bob@email.com'}]
 
 #Searches for a contact by name, ignoring case
 #Returns the contact if found, else None
@@ -30,6 +31,26 @@ def index():
     return render_template('index.html', 
                          contacts=contacts, 
                          title=app.config['FLASK_TITLE'])
+
+
+@app.route('/search')
+def search_contact():
+    query = request.args.get('query')
+    filtered_contacts = []
+    exists = find_contact_by_name(query)
+
+    #if there are multiple contacts with the same name, this displays all of them
+    for contact in contacts:
+        if contact['name'].lower() == query.lower():
+            filtered_contacts.append(contact)
+    
+    if exists:
+        return render_template('index.html', contacts=filtered_contacts, title=app.config['FLASK_TITLE'])
+    else:
+        filtered_contacts.append({'name': 'No contacts found with that name.', 'email': ''})
+        return render_template('index.html', contacts=filtered_contacts, title=app.config['FLASK_TITLE'])
+    
+
 
 @app.route('/add', methods=['POST'])
 def add_contact():
