@@ -19,7 +19,7 @@
         </form>
     </div>
     <!-- copilot, please create a form with a text input named "query" and a "Search" button -->
-    <div style="background-color: #f9f9f9; padding: 15px;">
+    <div style="background-color: #f9f9f9; padding: 10px;">
         <h3>Search Contacts</h3>
         <form action="/search" method="GET">
             <input type="text" name="query" placeholder="Search by name" required>
@@ -27,13 +27,26 @@
         </form>
     </div>
     <hr>
-    <h3>Current Contacts</h3>
-    {% for contact in contacts %}
-        <div class="card">
-            <strong>{{ contact.name }}</strong> - {{ contact.email }}
-        </div>
-    {% else %}
-        <p>No contacts found.</p>
-    {% endfor %}
+    <div style="background-color: #ffffff; padding: 0px;">
+        {% if status == 0 %}
+            <h3>Current Contacts</h3>
+            {% for contact in contacts %}
+                <div class="card">
+                    <strong>{{ contact.name }}</strong> - {{ contact.email }}
+                </div>
+            {% else %}
+                <p>No contacts found.</p>
+            {% endfor %}
+        {% elif status == 1 %}
+            <h3>Matching Contact(s)</h3>
+            {% for contact in contacts %}
+                <div class="card">
+                    <strong>{{ contact.name }}</strong> - {{ contact.email }}
+                </div>
+            {% endfor %}
+        {% elif status == 2 %}
+            <h3>No Matches Found</h3>
+        {% endif %}
+    </div>
 </body>
 </html>

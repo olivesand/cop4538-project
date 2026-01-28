@@ -10,6 +10,8 @@ app.config['FLASK_TITLE'] = ""
 contacts = [{'name': 'Alice', 'email': 'alice@email.com'},
             {'name': 'Bob', 'email': 'bob@email.com'}]
 
+status = 0
+
 #Searches for a contact by name, ignoring case
 #Returns the contact if found, else None
 def find_contact_by_name(name):
@@ -30,6 +32,7 @@ def index():
     app.config['FLASK_TITLE'] = "Olivia Sanchez "
     return render_template('index.html', 
                          contacts=contacts, 
+                         status=status,
                          title=app.config['FLASK_TITLE'])
 
 
@@ -45,10 +48,11 @@ def search_contact():
             filtered_contacts.append(contact)
     
     if exists:
-        return render_template('index.html', contacts=filtered_contacts, title=app.config['FLASK_TITLE'])
+        status = 1
+        return render_template('index.html', contacts=filtered_contacts, status=status, title=app.config['FLASK_TITLE'])
     else:
-        filtered_contacts.append({'name': 'No contacts found with that name.', 'email': ''})
-        return render_template('index.html', contacts=filtered_contacts, title=app.config['FLASK_TITLE'])
+        status = 2
+        return render_template('index.html', contacts=filtered_contacts, status=status, title=app.config['FLASK_TITLE'])
     
 
 
