@@ -5,10 +5,43 @@ app = Flask(__name__)
 
 app.config['FLASK_TITLE'] = ""
 
+#create a node class with data and next attributes
+class Node:
+    def __init__(self, name, email):
+        self.name = name
+        self.email = email
+        self.next = None
+
+#create a head class for linked list of type Node
+class LinkedList(Node):
+    def __init__(self):
+        self.head = None
+
+    #append a new node to the end of the linked list
+    def append(self, name, email):
+        new_node = Node(name, email)
+        if not self.head:
+            self.head = new_node
+            return
+        last = self.head
+        while last.next:
+            last = last.next
+        last.next = new_node
+
+    #iterate through the linked list
+    def __iter__(self):
+        current = self.head
+        while current:
+            yield current
+            current = current.next
+
+
+
 # --- IN-MEMORY DATA STRUCTURES (Students will modify this area) ---
 # Phase 1: A simple Python List to store contacts
-contacts = [{'name': 'Alice', 'email': 'alice@email.com'},
-            {'name': 'Bob', 'email': 'bob@email.com'}]
+contacts = LinkedList()
+contacts.append("Alice", "alice@email.com")
+contacts.append("Bob", "bob@email.com")
 
 status = 0
 
@@ -16,7 +49,7 @@ status = 0
 #Returns the contact if found, else None
 def find_contact_by_name(name):
     for contact in contacts:
-        if contact['name'].lower() == name.lower():
+        if contact.name.lower() == name.lower():
             return contact
     return None
 
@@ -39,13 +72,13 @@ def index():
 @app.route('/search')
 def search_contact():
     query = request.args.get('query')
-    filtered_contacts = []
+    filtered_contacts = LinkedList()
     exists = find_contact_by_name(query)
 
     #if there are multiple contacts with the same name, this displays all of them
     for contact in contacts:
-        if contact['name'].lower() == query.lower():
-            filtered_contacts.append(contact)
+        if contact.name.lower() == query.lower():
+            filtered_contacts.append(contact.name, contact.email)
     
     if exists:
         status = 1
@@ -66,7 +99,7 @@ def add_contact():
     email = request.form.get('email')
     
     # Phase 1 Logic: Append to list
-    contacts.append({'name': name, 'email': email})
+    contacts.append(name, email)
     
     return redirect(url_for('index'))
 
