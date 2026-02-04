@@ -9,8 +9,13 @@
 </head>
 <body>
     <h1>{{ title }}Contact Manager</h1>
+    <!-- copilot, please add an "Undo" button-->
+    <div style="margin-bottom: 20px;">
+        <form action="/undo" method="POST" style="display: inline;">
+            <button type="submit">Undo</button>
+        </form>
     
-    <div style="background-color: #f0f0f0; padding: 15px;">
+    <div style="background-color: #f0f0f0; padding: 15px; margin-top: 20px;">
         <h3>Add New Contact</h3>
         <form action="/add" method="POST">
             <input type="text" name="name" placeholder="Name" required>
@@ -33,6 +38,12 @@
             {% for contact in contacts %}
                 <div class="card">
                     <strong>{{ contact.name }}</strong> - {{ contact.email }}
+                    <!-- copilot, please add a "Delete" button that deletes the correlating contact-->
+                    <form action="/delete" method="POST" style="display: inline;">
+                        <input type="hidden" name="name" value="{{ contact.name }}">
+                        <input type="hidden" name="email" value="{{ contact.email }}">
+                        <button type="submit">Delete</button>
+                    </form>
                 </div>
             {% else %}
                 <p>No contacts found.</p>
