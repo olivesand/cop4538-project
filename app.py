@@ -35,6 +35,27 @@ class LinkedList(Node):
             yield current
             current = current.next
 
+class Queue:
+    def __init__(self):
+        self.items = []
+
+    def is_empty(self):
+        return len(self.items) == 0
+
+    def enqueue(self, item):
+        self.items.insert(0, item)
+
+    def dequeue(self):
+        if not self.is_empty():
+            return self.items.pop(0)
+        return None
+
+    def size(self):
+        return len(self.items)
+    
+    def clear(self):
+        self.items = []
+
 
 
 # --- IN-MEMORY DATA STRUCTURES (Students will modify this area) ---
@@ -43,22 +64,43 @@ contacts = LinkedList()
 contacts.append("Alice", "alice@email.com")
 contacts.append("Bob", "bob@email.com")
 
+
 current_contacts = [{'name' : 'Alice', 'email': 'alice@email.com'},
                     {'name' : 'Bob', 'email': 'bob@email.com'}]
 
 deleted_contacts = []
-
 actions = []
+redo_queue = Queue()
 
 status = 0
+
+
+# hash function that takes a name and returns a hash value
+# (hopefully) guarantees no duplicates UNLESS there are two contacts w the same name
+def name_hash(name):
+    hash = ""
+    for char in name:
+        num = ord(char.lower()) - 96
+        if num < 10:
+            hash = hash + "0" + str(num)
+        else:
+            hash = hash + str(num)
+
+    return hash
+
 
 #Searches for a contact by name, ignoring case
 #Returns the contact if found, else None
 def find_contact_by_name(name):
-    for contact in contacts:
-        if contact.name.lower() == name.lower():
-            return contact
+    test_hash = name_hash(name)
+    if test_hash in contacts_by_hash:
+        return contacts_by_hash[test_hash]
     return None
+
+contacts_by_hash = {
+    name_hash(contact.name): contact for contact in contacts
+}
+
 
 # --- ROUTES ---
 
@@ -82,13 +124,10 @@ def search_contact():
     filtered_contacts = LinkedList()
     exists = find_contact_by_name(query)
 
-    #if there are multiple contacts with the same name, this displays all of them
-    for contact in contacts:
-        if contact.name.lower() == query.lower():
-            filtered_contacts.append(contact.name, contact.email)
     
     if exists:
         status = 1
+        filtered_contacts.append(exists.name, exists.email)
         return render_template('index.html', contacts=filtered_contacts, status=status, title=app.config['FLASK_TITLE'])
     else:
         status = 2
@@ -110,7 +149,11 @@ def add_contact():
 
     current_contacts.append({'name': name, 'email': email})
 
+    contacts_by_hash[name_hash(name)] = Node(name, email)
+
     actions.append('A')
+
+    redo_queue.clear()
     
     return redirect(url_for('index'))
 
@@ -143,7 +186,13 @@ def delete_contact():
                 deleted_contacts.append(contact)
                 break
 
+        # Remove from hash table
+        if name_hash(name) in contacts_by_hash:
+            del contacts_by_hash[name_hash(name)]
+
     actions.append('D')
+    redo_queue.clear()
+
     return render_template('index.html', contacts=contacts, status=status, title=app.config['FLASK_TITLE'])
     
 
@@ -170,6 +219,12 @@ def undo():
                         break
                     prev = current
                     current = current.next
+
+                # Remove from hash table
+                if name_hash(added_contact['name']) in contacts_by_hash:
+                    del contacts_by_hash[name_hash(added_contact['name'])]
+
+                redo_queue.enqueue(('A', added_contact))
         
             
         elif last_action == 'D':
@@ -177,10 +232,53 @@ def undo():
                 last_deleted = deleted_contacts.pop()
                 contacts.append(last_deleted['name'], last_deleted['email'])
                 current_contacts.append(last_deleted)
+                contacts_by_hash[name_hash(last_deleted['name'])] = Node(last_deleted['name'], last_deleted['email'])
+
+                redo_queue.enqueue(('D', last_deleted))
                 
-    
     return redirect(url_for('index'))
 
+
+# redo route
+@app.route('/redo', methods=['POST'])
+def redo():
+    if not redo_queue.is_empty():
+        action, contact = redo_queue.dequeue()
+        if action == 'A':
+            contacts.append(contact['name'], contact['email'])
+            current_contacts.append(contact)
+            actions.append('A')
+            contacts_by_hash[name_hash(contact['name'])] = Node(contact['name'], contact['email'])  
+        elif action == 'D':
+            contact_to_delete = find_contact_by_name(contact['name'])
+            if contact_to_delete:
+                # Remove from linked list
+                current = contacts.head
+                prev = None
+                while current:
+                    if current.name.lower() == contact['name'].lower():
+                        if prev:
+                            prev.next = current.next
+                        else:
+                            contacts.head = current.next
+                        break
+                    prev = current
+                    current = current.next
+
+                # Remove from current_contacts
+                for c in current_contacts:
+                    if c['name'].lower() == contact['name'].lower():
+                        current_contacts.remove(c)
+                        deleted_contacts.append(c)
+                        break
+
+                # Remove from hash table
+                if name_hash(contact['name']) in contacts_by_hash:
+                    del contacts_by_hash[name_hash(contact['name'])]
+
+                actions.append('D')
+
+    return redirect(url_for('index'))
 
 # --- DATABASE CONNECTIVITY (For later phases) ---
 # Placeholders for students to fill in during Sessions 5 and 27
