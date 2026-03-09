@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for
 import os
+import time
 
 app = Flask(__name__)
 
@@ -155,12 +156,15 @@ def index():
 @app.route('/search')
 def search_contact():
     query = request.args.get('query')
+    start_time = time.time()
     filtered_contacts = LinkedList()
     quick_sort(contacts_by_hash, 0, len(contacts_by_hash) - 1)
-        
 
     exists = find_contact_by_id(query)
 
+    end_time = time.time()
+    time_elapsed = end_time - start_time
+    print(f"Search for '{query}' took {time_elapsed:.10f} seconds")
     
     if exists:
         status = 1
