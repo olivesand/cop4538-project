@@ -111,15 +111,8 @@ def name_hash(name):
     return hash
 
 
-#Searches for a contact by name, ignoring case
+#Searches for a contact by its hash using binary search
 #Returns the contact if found, else None
-def find_contact_by_name(name):
-    test_hash = name_hash(name)
-    for contact in contacts_by_hash:
-        if test_hash in contact:
-            return contact[test_hash]
-    return None
-
 def find_contact_by_id(name):
     test_hash = name_hash(name)
     left, right = 0, len(contacts_by_hash) - 1
@@ -163,7 +156,7 @@ def index():
 def search_contact():
     query = request.args.get('query')
     filtered_contacts = LinkedList()
-    sorted_contacts = quick_sort(contacts_by_hash, 0, len(contacts_by_hash) - 1)
+    quick_sort(contacts_by_hash, 0, len(contacts_by_hash) - 1)
         
 
     exists = find_contact_by_id(query)
@@ -208,7 +201,8 @@ def add_contact():
 def delete_contact():
     name = request.form.get('name')
     # Phase 1 Logic: Remove from list
-    contact_to_delete = find_contact_by_name(name)
+    quick_sort(contacts_by_hash, 0, len(contacts_by_hash) - 1)
+    contact_to_delete = find_contact_by_id(name)
 
     if contact_to_delete:
         # Remove from linked list
@@ -253,7 +247,8 @@ def undo():
         last_action = actions.pop()
         if last_action == 'A':
             added_contact = current_contacts.pop()
-            contact_to_delete = find_contact_by_name(added_contact['name'])
+            quick_sort(contacts_by_hash, 0, len(contacts_by_hash) - 1)
+            contact_to_delete = find_contact_by_id(added_contact['name'])
 
             if contact_to_delete:
                 # Remove from linked list
@@ -270,8 +265,12 @@ def undo():
                     current = current.next
 
                 # Remove from hash table
-                if name_hash(added_contact['name']) in contacts_by_hash:
-                    del contacts_by_hash[name_hash(added_contact['name'])]
+                i = 0
+                for contact in contacts_by_hash:
+                    if name_hash(added_contact['name']) in contact:
+                        del contacts_by_hash[i]
+                        break
+                    i += 1
 
                 redo_queue.enqueue(('A', added_contact))
         
@@ -281,7 +280,7 @@ def undo():
                 last_deleted = deleted_contacts.pop()
                 contacts.append(last_deleted['name'], last_deleted['email'])
                 current_contacts.append(last_deleted)
-                contacts_by_hash[name_hash(last_deleted['name'])] = Node(last_deleted['name'], last_deleted['email'])
+                contacts_by_hash.append({name_hash(last_deleted['name']) : Node(last_deleted['name'], last_deleted['email'])})
 
                 redo_queue.enqueue(('D', last_deleted))
                 
@@ -297,9 +296,10 @@ def redo():
             contacts.append(contact['name'], contact['email'])
             current_contacts.append(contact)
             actions.append('A')
-            contacts_by_hash[name_hash(contact['name'])] = Node(contact['name'], contact['email'])  
+            contacts_by_hash.append({name_hash(contact['name']) : Node(contact['name'], contact['email'])})  
         elif action == 'D':
-            contact_to_delete = find_contact_by_name(contact['name'])
+            quick_sort(contacts_by_hash, 0, len(contacts_by_hash) - 1)
+            contact_to_delete = find_contact_by_id(contact['name'])
             if contact_to_delete:
                 # Remove from linked list
                 current = contacts.head
@@ -322,8 +322,12 @@ def redo():
                         break
 
                 # Remove from hash table
-                if name_hash(contact['name']) in contacts_by_hash:
-                    del contacts_by_hash[name_hash(contact['name'])]
+                i = 0
+                for c in contacts_by_hash:
+                    if name_hash(contact['name']) in c:
+                        del contacts_by_hash[i]
+                        break
+                    i += 1
 
                 actions.append('D')
 
