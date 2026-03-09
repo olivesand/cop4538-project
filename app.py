@@ -74,6 +74,28 @@ redo_queue = Queue()
 
 status = 0
 
+# quick sort functions
+# edited partition function to work with list of dicts - allows for sorting by hash value
+def partition(arr, low, high):
+    pivot = arr[high]
+    pivotNum = list(pivot.keys())[0]
+    i = low - 1
+    for j in range(low, high):
+        numCheck = list(arr[j].keys())[0]
+        if int(numCheck) <= int(pivotNum): # int() is used here so that the hash values are compared as numbers rather than strings
+            i += 1
+            arr[i], arr[j] = arr[j], arr[i]
+    arr[i + 1], arr[high] = arr[high], arr[i + 1]
+    return i + 1
+def quick_sort(arr, low, high):
+    if low < high:
+
+        pi = partition(arr, low, high)
+        quick_sort(arr, low, pi - 1)
+        quick_sort(arr, pi + 1, high)
+    return arr
+
+
 
 # hash function that takes a name and returns a hash value
 # (hopefully) guarantees no duplicates UNLESS there are two contacts w the same name
@@ -93,13 +115,32 @@ def name_hash(name):
 #Returns the contact if found, else None
 def find_contact_by_name(name):
     test_hash = name_hash(name)
-    if test_hash in contacts_by_hash:
-        return contacts_by_hash[test_hash]
+    for contact in contacts_by_hash:
+        if test_hash in contact:
+            return contact[test_hash]
     return None
 
-contacts_by_hash = {
-    name_hash(contact.name): contact for contact in contacts
-}
+def find_contact_by_id(name):
+    test_hash = name_hash(name)
+    left, right = 0, len(contacts_by_hash) - 1
+    
+    while left <= right:
+        mid = left + (right - left) // 2
+        mid_hash = list(contacts_by_hash[mid].keys())[0]
+        
+        if mid_hash == test_hash:
+            return contacts_by_hash[mid][mid_hash] 
+        elif int(mid_hash) < int(test_hash): # because the hashes are sorted by their int values, we need to compare their int values instead of their strings
+            left = mid + 1
+        else:
+            right = mid - 1
+            
+    return None
+
+contacts_by_hash = []
+for contact in contacts:
+    contacts_by_hash.append({name_hash(contact.name) : contact})
+
 
 
 # --- ROUTES ---
@@ -122,7 +163,10 @@ def index():
 def search_contact():
     query = request.args.get('query')
     filtered_contacts = LinkedList()
-    exists = find_contact_by_name(query)
+    sorted_contacts = quick_sort(contacts_by_hash, 0, len(contacts_by_hash) - 1)
+        
+
+    exists = find_contact_by_id(query)
 
     
     if exists:
@@ -144,12 +188,13 @@ def add_contact():
     name = request.form.get('name')
     email = request.form.get('email')
     
+    
     # Phase 1 Logic: Append to list
     contacts.append(name, email)
 
     current_contacts.append({'name': name, 'email': email})
 
-    contacts_by_hash[name_hash(name)] = Node(name, email)
+    contacts_by_hash.append({name_hash(name) : Node(name, email)})
 
     actions.append('A')
 
@@ -187,8 +232,12 @@ def delete_contact():
                 break
 
         # Remove from hash table
-        if name_hash(name) in contacts_by_hash:
-            del contacts_by_hash[name_hash(name)]
+        i = 0
+        for contact in contacts_by_hash:
+            if name_hash(name) in contact:
+                del contacts_by_hash[i]
+                break
+            i += 1
 
     actions.append('D')
     redo_queue.clear()
@@ -209,7 +258,7 @@ def undo():
             if contact_to_delete:
                 # Remove from linked list
                 current = contacts.head
-                prev = None
+                prev = None 
                 while current:
                     if current.name.lower() == added_contact['name'].lower():
                         if prev:
