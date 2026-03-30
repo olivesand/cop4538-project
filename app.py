@@ -8,10 +8,11 @@ app.config['FLASK_TITLE'] = ""
 
 #create a node class with data and next attributes
 class Node:
-    def __init__(self, name, email, tags=[]):
+    def __init__(self, name, email, tags=["All Contacts"], priority=99):
         self.name = name
         self.email = email
         self.tags = tags
+        self.priority = priority
         self.next = None
 
 #create a head class for linked list of type Node
@@ -20,8 +21,8 @@ class LinkedList(Node):
         self.head = None
 
     #append a new node to the end of the linked list
-    def append(self, name, email, tag=None):
-        new_node = Node(name, email, tag)
+    def append(self, name, email, tags=["All Contacts"], priority=99):
+        new_node = Node(name, email, tags, priority)
         if not self.head:
             self.head = new_node
             return
@@ -57,6 +58,68 @@ class Queue:
     
     def clear(self):
         self.items = []
+
+#min heap for contact priority
+class MinHeap:
+    def __init__(self):
+        self.heap = []
+
+    # function to insert a new node into the heap
+    def insert(self, contact):
+        self.heap.append(contact)
+        self._heapify_up(len(self.heap) - 1)
+
+    # function to maintain the heap property after insertion
+    def _heapify_up(self, index):
+        parent_index = (index - 1) // 2
+        if index > 0 and self.heap[index].priority < self.heap[parent_index].priority:
+            self.heap[index], self.heap[parent_index] = self.heap[parent_index], self.heap[index]
+            self._heapify_up(parent_index)
+
+    def _heapify_down(self, index):
+        smallest = index
+        left_child = 2 * index + 1
+        right_child = 2 * index + 2
+
+        if left_child < len(self.heap) and self.heap[left_child].priority < self.heap[smallest].priority:
+            smallest = left_child
+        if right_child < len(self.heap) and self.heap[right_child].priority < self.heap[smallest].priority:
+            smallest = right_child
+        if smallest != index:
+            self.heap[index], self.heap[smallest] = self.heap[smallest], self.heap[index]
+            self._heapify_down(smallest)
+
+    def remove_min(self):
+        if not self.heap:
+            return None
+        min_node = self.heap[0]
+        last_node = self.heap.pop()
+        if self.heap:
+            self.heap[0] = last_node
+            self._heapify_down(0)
+        return min_node
+    
+    def get_top_10(self):
+        top_10 = MinHeap()
+        temp_heap = MinHeap()
+        temp_heap.heap = self.heap.copy()
+        i = 0
+        while i < 10 and len(temp_heap.heap) != 0:
+            important = temp_heap.remove_min()
+            top_10.insert(important)
+            i += 1
+        return top_10.heap
+    
+
+    def remove_contact(self, name):
+        for i in range(len(self.heap)):
+            if self.heap[i].name == name:
+                last_node = self.heap.pop()
+                if i < len(self.heap):
+                    self.heap[i] = last_node
+                    self._heapify_down(i)
+                return True
+        return False
 
 #trees for contact category storage
 class TreeNode:
@@ -135,9 +198,12 @@ contacts = LinkedList()
 contacts.append("Alice", "alice@email.com", ["All Contacts", "Work", "Tech", "Engineering"])
 contacts.append("Bob", "bob@email.com", ["All Contacts", "Personal", "Friends"])
 
+priority_contacts = MinHeap()
+priority_contacts.insert(Node("Alice", "alice@email.com", ["All Contacts", "Work", "Tech", "Engineering"],  priority=99))
+priority_contacts.insert(Node("Bob", "bob@email.com", ["All Contacts", "Personal", "Friends"], priority=99))
 
-current_contacts = [{'name' : 'Alice', 'email': 'alice@email.com', 'tags': ['All Contacts', 'Work', 'Tech', 'Engineering']},
-                    {'name' : 'Bob', 'email': 'bob@email.com', 'tags': ['All Contacts', 'Personal', 'Friends']}]
+current_contacts = [{'name' : 'Alice', 'email': 'alice@email.com', 'tags': ['All Contacts', 'Work', 'Tech', 'Engineering'], 'priority' : 99},
+                    {'name' : 'Bob', 'email': 'bob@email.com', 'tags': ['All Contacts', 'Personal', 'Friends'], 'priority' : 99}]
 
 deleted_contacts = []
 actions = []
@@ -249,18 +315,25 @@ def search_by_tag():
     tag = request.args.get('tag')
     filtered_contacts = LinkedList()
 
-    for contact in contacts:
-        if tag in contact.tags:
-            filtered_contacts.append(contact.name, contact.email, contact.tags)
-
-    if filtered_contacts.head is not None:
-        if tag == "All Contacts":
-            status = 0
-        else:
-            status = 3
-        return render_template('index.html', contacts=filtered_contacts, status=status, tag=tag, title=app.config['FLASK_TITLE'])
+    if tag == "Favorites":
+        for contact in priority_contacts.get_top_10():
+            filtered_contacts.append(contact.name, contact.email, contact.tags, contact.priority)
+        status = 4
+        return render_template('index.html', contacts=filtered_contacts, status=4, title=app.config['FLASK_TITLE'])
     else:
-        return render_template('index.html', contacts=filtered_contacts, status=2, title=app.config['FLASK_TITLE'])
+        for contact in contacts:
+            if tag in contact.tags:
+                filtered_contacts.append(contact.name, contact.email, contact.tags, contact.priority)
+
+        if filtered_contacts.head is not None:
+            if tag == "All Contacts":
+                status = 0
+            else:
+                status = 3
+            return render_template('index.html', contacts=filtered_contacts, status=status, tag=tag, title=app.config['FLASK_TITLE'])
+        else:
+            return render_template('index.html', contacts=filtered_contacts, status=2, title=app.config['FLASK_TITLE'])
+
 
 @app.route('/add', methods=['POST'])
 def add_contact():
@@ -271,6 +344,7 @@ def add_contact():
     name = request.form.get('name')
     email = request.form.get('email')
     tag = request.form.get('tag')
+    priority = int(request.form.get('prio'))
 
     tags = [root.value]
     
@@ -283,13 +357,17 @@ def add_contact():
         else:
             tags += [root.children[1].children[1].value]
     
-    print("Tags for new contact:", tags)
+    
     # Phase 1 Logic: Append to list
-    contacts.append(name, email, tags)
+    new_contact = Node(name, email, tags, priority)
 
-    current_contacts.append({'name': name, 'email': email, 'tags': tags})
+    contacts.append(name, email, tags, priority)
 
-    contacts_by_hash.append({name_hash(name) : Node(name, email, tags)})
+    priority_contacts.insert(new_contact)
+
+    current_contacts.append({'name': name, 'email': email, 'tags': tags, 'priority': priority})
+
+    contacts_by_hash.append({name_hash(name) : new_contact})
 
     actions.append('A')
 
@@ -335,6 +413,9 @@ def delete_contact():
                 break
             i += 1
 
+        # Remove from priority heap
+        priority_contacts.remove_contact(name)
+
     actions.append('D')
     redo_queue.clear()
 
@@ -374,15 +455,19 @@ def undo():
                         break
                     i += 1
 
+                # Remove from priority heap
+                priority_contacts.remove_contact(added_contact['name'])
+
                 redo_queue.enqueue(('A', added_contact))
         
             
         elif last_action == 'D':
             if deleted_contacts:
                 last_deleted = deleted_contacts.pop()
-                contacts.append(last_deleted['name'], last_deleted['email'], last_deleted['tags'])
+                contacts.append(last_deleted['name'], last_deleted['email'], last_deleted['tags'], last_deleted['priority'])
                 current_contacts.append(last_deleted)
-                contacts_by_hash.append({name_hash(last_deleted['name']) : Node(last_deleted['name'], last_deleted['email'], last_deleted['tags'])})
+                contacts_by_hash.append({name_hash(last_deleted['name']) : Node(last_deleted['name'], last_deleted['email'], last_deleted['tags'], last_deleted['priority'])})
+                priority_contacts.insert(Node(last_deleted['name'], last_deleted['email'], last_deleted['tags'], last_deleted['priority']))
 
                 redo_queue.enqueue(('D', last_deleted))
                 
@@ -395,10 +480,11 @@ def redo():
     if not redo_queue.is_empty():
         action, contact = redo_queue.dequeue()
         if action == 'A':
-            contacts.append(contact['name'], contact['email'], contact['tags'])
+            contacts.append(contact['name'], contact['email'], contact['tags'], contact['priority'])
+            priority_contacts.insert(Node(contact['name'], contact['email'], contact['tags'], contact['priority']))
             current_contacts.append(contact)
             actions.append('A')
-            contacts_by_hash.append({name_hash(contact['name']) : Node(contact['name'], contact['email'], contact['tags'])})  
+            contacts_by_hash.append({name_hash(contact['name']) : Node(contact['name'], contact['email'], contact['tags'], contact['priority'])})  
         elif action == 'D':
             quick_sort(contacts_by_hash, 0, len(contacts_by_hash) - 1)
             contact_to_delete = find_contact_by_id(name_hash(contact['name']))
@@ -430,6 +516,9 @@ def redo():
                         del contacts_by_hash[i]
                         break
                     i += 1
+
+                # Remove from priority heap
+                priority_contacts.remove_contact(contact['name'])
 
                 actions.append('D')
 

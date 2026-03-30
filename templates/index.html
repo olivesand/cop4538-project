@@ -23,12 +23,19 @@
         <form action="/" method="GET" style="display: inline;">
             <button type="submit">Home</button>
         </form>
+
+        <form action="/search_by_tag" method="GET" style="display: inline;">
+            <input type="hidden" name="tag" value="Favorites">
+            <button type="submit">Favorites</button>
+        </form>
+    </div>
     
     <div style="background-color: #f0f0f0; padding: 15px; margin-top: 20px;">
         <h3>Add New Contact</h3>
         <form action="/add" method="POST">
             <input type="text" name="name" placeholder="Name" required>
             <input type="email" name="email" placeholder="Email" required>
+            <input type="text" name="prio" placeholder="Priority (Default 99)" value="99">
             <select name="tag">
                 <option value="Family">Family</option>
                 <option value="Friends">Friends</option>
@@ -50,6 +57,7 @@
         <form action="/search_by_tag" method="GET">
             <select name="tag">
                 <option value="All Contacts">All Contacts</option>
+                <option value="Favorites">Favorites</option>
                 <option value="Personal">Personal</option>
                 <option value="Family">Family</option>
                 <option value="Friends">Friends</option>
@@ -84,6 +92,11 @@
             {% for contact in contacts %}
                 <div class="card">
                     <strong>{{ contact.name }}</strong> - {{ contact.email }}
+                    <form action="/delete" method="POST" style="display: inline;">
+                        <input type="hidden" name="name" value="{{ contact.name }}">
+                        <input type="hidden" name="email" value="{{ contact.email }}">
+                        <button type="submit">Delete</button>
+                    </form>
                 </div>
             {% endfor %}
         {% elif status == 2 %}
@@ -93,6 +106,23 @@
             {% for contact in contacts %}
                 <div class="card">
                     <strong>{{ contact.name }}</strong> - {{ contact.email }}
+                    <form action="/delete" method="POST" style="display: inline;">
+                        <input type="hidden" name="name" value="{{ contact.name }}">
+                        <input type="hidden" name="email" value="{{ contact.email }}">
+                        <button type="submit">Delete</button>
+                    </form>
+                </div>
+            {% endfor %}
+        {% elif status == 4 %}
+            <h3>Top 10 Priority Contacts</h3>
+            {% for contact in contacts %}
+                <div class="card">
+                    <strong>{{ contact.priority }}. {{ contact.name }}</strong> - {{ contact.email }}
+                    <form action="/delete" method="POST" style="display: inline;">
+                        <input type="hidden" name="name" value="{{ contact.name }}">
+                        <input type="hidden" name="email" value="{{ contact.email }}">
+                        <button type="submit">Delete</button>
+                    </form>
                 </div>
             {% endfor %}
         {% endif %}
