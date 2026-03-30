@@ -8,9 +8,10 @@ app.config['FLASK_TITLE'] = ""
 
 #create a node class with data and next attributes
 class Node:
-    def __init__(self, name, email):
+    def __init__(self, name, email, tags=[]):
         self.name = name
         self.email = email
+        self.tags = tags
         self.next = None
 
 #create a head class for linked list of type Node
@@ -19,8 +20,8 @@ class LinkedList(Node):
         self.head = None
 
     #append a new node to the end of the linked list
-    def append(self, name, email):
-        new_node = Node(name, email)
+    def append(self, name, email, tag=None):
+        new_node = Node(name, email, tag)
         if not self.head:
             self.head = new_node
             return
@@ -57,17 +58,86 @@ class Queue:
     def clear(self):
         self.items = []
 
+#trees for contact category storage
+class TreeNode:
+    def __init__(self, value):
+        self.value = value
+        self.children = []
+        self.left = None
+        self.right = None
 
+    def add_child(self, child_node):
+        if not self.left:
+            self.left = child_node
+        elif not self.right:
+            self.right = child_node
+        self.children.append(child_node)
+
+class BinarySearchTree:
+    def __init__(self):
+        self.root = None
+
+    def insert(self, value):
+        if self.root is None:
+            self.root = TreeNode(value)
+        else:
+            self._insert_recursive(self.root, value)
+
+    def _insert_recursive(self, currentNode, value):
+        if currentNode is None:
+            return TreeNode(value)
+        if value < currentNode.value:
+            currentNode.left = self._insert_recursive(currentNode.left, value)
+        else:
+            currentNode.right = self._insert_recursive(currentNode.right, value)
+        return currentNode
 
 # --- IN-MEMORY DATA STRUCTURES (Students will modify this area) ---
+# contact category tree
+root = TreeNode("All Contacts")
+
+work = TreeNode("Work")
+tech = TreeNode("Tech")
+marketing = TreeNode("Marketing")
+eng = TreeNode("Engineering")
+prog = TreeNode("Programming")
+
+personal = TreeNode("Personal")
+family = TreeNode("Family")
+friends = TreeNode("Friends")
+
+root.add_child(personal)
+root.add_child(work)
+
+work.add_child(tech)
+work.add_child(marketing)
+
+tech.add_child(eng)
+tech.add_child(prog)
+
+personal.add_child(family)
+personal.add_child(friends)
+
+contact_categories = BinarySearchTree()
+
+contact_categories.insert("Marketing")
+contact_categories.insert("Family")
+contact_categories.insert("Programming")
+contact_categories.insert("Engineering")
+contact_categories.insert("Friends")
+contact_categories.insert("Personal")
+contact_categories.insert("Tech")
+contact_categories.insert("Work")
+contact_categories.insert("All Contacts")
+
 # Phase 1: A simple Python List to store contacts
 contacts = LinkedList()
-contacts.append("Alice", "alice@email.com")
-contacts.append("Bob", "bob@email.com")
+contacts.append("Alice", "alice@email.com", ["All Contacts", "Work", "Tech", "Engineering"])
+contacts.append("Bob", "bob@email.com", ["All Contacts", "Personal", "Friends"])
 
 
-current_contacts = [{'name' : 'Alice', 'email': 'alice@email.com'},
-                    {'name' : 'Bob', 'email': 'bob@email.com'}]
+current_contacts = [{'name' : 'Alice', 'email': 'alice@email.com', 'tags': ['All Contacts', 'Work', 'Tech', 'Engineering']},
+                    {'name' : 'Bob', 'email': 'bob@email.com', 'tags': ['All Contacts', 'Personal', 'Friends']}]
 
 deleted_contacts = []
 actions = []
@@ -114,8 +184,7 @@ def name_hash(name):
 
 #Searches for a contact by its hash using binary search
 #Returns the contact if found, else None
-def find_contact_by_id(name):
-    test_hash = name_hash(name)
+def find_contact_by_id(test_hash):
     left, right = 0, len(contacts_by_hash) - 1
     
     while left <= right:
@@ -160,7 +229,7 @@ def search_contact():
     filtered_contacts = LinkedList()
     quick_sort(contacts_by_hash, 0, len(contacts_by_hash) - 1)
 
-    exists = find_contact_by_id(query)
+    exists = find_contact_by_id(name_hash(query))
 
     end_time = time.time()
     time_elapsed = end_time - start_time
@@ -175,6 +244,23 @@ def search_contact():
         return render_template('index.html', contacts=filtered_contacts, status=status, title=app.config['FLASK_TITLE'])
     
 
+@app.route('/search_by_tag')
+def search_by_tag():
+    tag = request.args.get('tag')
+    filtered_contacts = LinkedList()
+
+    for contact in contacts:
+        if tag in contact.tags:
+            filtered_contacts.append(contact.name, contact.email, contact.tags)
+
+    if filtered_contacts.head is not None:
+        if tag == "All Contacts":
+            status = 0
+        else:
+            status = 3
+        return render_template('index.html', contacts=filtered_contacts, status=status, tag=tag, title=app.config['FLASK_TITLE'])
+    else:
+        return render_template('index.html', contacts=filtered_contacts, status=2, title=app.config['FLASK_TITLE'])
 
 @app.route('/add', methods=['POST'])
 def add_contact():
@@ -184,14 +270,26 @@ def add_contact():
     """
     name = request.form.get('name')
     email = request.form.get('email')
+    tag = request.form.get('tag')
+
+    tags = [root.value]
     
+    if tag == "Family" or tag == "Friends":
+        tags += [root.children[0].value, tag]
+    elif tag == "Engineering" or tag == "Programming" or tag == "Marketing":
+        tags += [root.children[1].value]
+        if tag != "Marketing":
+            tags += [root.children[1].children[0].value, tag]
+        else:
+            tags += [root.children[1].children[1].value]
     
+    print("Tags for new contact:", tags)
     # Phase 1 Logic: Append to list
-    contacts.append(name, email)
+    contacts.append(name, email, tags)
 
-    current_contacts.append({'name': name, 'email': email})
+    current_contacts.append({'name': name, 'email': email, 'tags': tags})
 
-    contacts_by_hash.append({name_hash(name) : Node(name, email)})
+    contacts_by_hash.append({name_hash(name) : Node(name, email, tags)})
 
     actions.append('A')
 
@@ -206,7 +304,7 @@ def delete_contact():
     name = request.form.get('name')
     # Phase 1 Logic: Remove from list
     quick_sort(contacts_by_hash, 0, len(contacts_by_hash) - 1)
-    contact_to_delete = find_contact_by_id(name)
+    contact_to_delete = find_contact_by_id(name_hash(name))
 
     if contact_to_delete:
         # Remove from linked list
@@ -252,7 +350,7 @@ def undo():
         if last_action == 'A':
             added_contact = current_contacts.pop()
             quick_sort(contacts_by_hash, 0, len(contacts_by_hash) - 1)
-            contact_to_delete = find_contact_by_id(added_contact['name'])
+            contact_to_delete = find_contact_by_id(name_hash(added_contact['name']))
 
             if contact_to_delete:
                 # Remove from linked list
@@ -282,9 +380,9 @@ def undo():
         elif last_action == 'D':
             if deleted_contacts:
                 last_deleted = deleted_contacts.pop()
-                contacts.append(last_deleted['name'], last_deleted['email'])
+                contacts.append(last_deleted['name'], last_deleted['email'], last_deleted['tags'])
                 current_contacts.append(last_deleted)
-                contacts_by_hash.append({name_hash(last_deleted['name']) : Node(last_deleted['name'], last_deleted['email'])})
+                contacts_by_hash.append({name_hash(last_deleted['name']) : Node(last_deleted['name'], last_deleted['email'], last_deleted['tags'])})
 
                 redo_queue.enqueue(('D', last_deleted))
                 
@@ -297,13 +395,13 @@ def redo():
     if not redo_queue.is_empty():
         action, contact = redo_queue.dequeue()
         if action == 'A':
-            contacts.append(contact['name'], contact['email'])
+            contacts.append(contact['name'], contact['email'], contact['tags'])
             current_contacts.append(contact)
             actions.append('A')
-            contacts_by_hash.append({name_hash(contact['name']) : Node(contact['name'], contact['email'])})  
+            contacts_by_hash.append({name_hash(contact['name']) : Node(contact['name'], contact['email'], contact['tags'])})  
         elif action == 'D':
             quick_sort(contacts_by_hash, 0, len(contacts_by_hash) - 1)
-            contact_to_delete = find_contact_by_id(contact['name'])
+            contact_to_delete = find_contact_by_id(name_hash(contact['name']))
             if contact_to_delete:
                 # Remove from linked list
                 current = contacts.head
